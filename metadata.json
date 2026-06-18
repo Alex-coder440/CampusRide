@@ -1,0 +1,6 @@
+{
+  "name": "CampusRide",
+  "description": "Campus transport reimagined. Book rides within campus or beyond. Verified drivers, instant confirmation, seamless payments.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
