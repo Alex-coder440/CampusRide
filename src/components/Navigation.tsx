@@ -37,16 +37,23 @@ export default function Navigation({ currentView, setCurrentView, user, onLogout
               Home
             </button>
             <button 
-              onClick={() => {
-                if (!user) handleNav('rides');
-                else if (user.role === 'student') handleNav('student_portal');
-                else if (user.role === 'driver') handleNav('driver_portal');
-                else if (user.role === 'admin') handleNav('admin_portal');
-              }}
-              className={`transition-colors hover:text-black hover:scale-105 active:scale-95 ${(currentView === 'rides' || currentView === 'student_portal' || currentView === 'driver_portal' || currentView === 'admin_portal') ? 'text-black' : ''}`}
+              onClick={() => handleNav('features')} 
+              className={`transition-colors hover:text-black hover:scale-105 active:scale-95 ${currentView === 'features' ? 'text-black' : ''}`}
             >
-              {!user ? 'Book Ride' : user.role === 'student' ? 'Student Portal' : user.role === 'driver' ? 'Driver Portal' : 'Admin Portal'}
+              Features
             </button>
+            {user && (
+              <button 
+                onClick={() => {
+                  if (user.role === 'student') handleNav('student_portal');
+                  else if (user.role === 'driver') handleNav('driver_portal');
+                  else if (user.role === 'admin') handleNav('admin_portal');
+                }}
+                className={`transition-colors hover:text-black hover:scale-105 active:scale-95 ${(currentView === 'student_portal' || currentView === 'driver_portal' || currentView === 'admin_portal') ? 'text-black' : ''}`}
+              >
+                {user.role === 'student' ? 'Student Portal' : user.role === 'driver' ? 'Driver Portal' : 'Admin Portal'}
+              </button>
+            )}
           </nav>
 
           {/* Desktop Auth */}
@@ -107,16 +114,23 @@ export default function Navigation({ currentView, setCurrentView, user, onLogout
               Start Here
             </button>
             <button 
-              onClick={() => {
-                if (!user) handleNav('rides');
-                else if (user.role === 'student') handleNav('student_portal');
-                else if (user.role === 'driver') handleNav('driver_portal');
-                else if (user.role === 'admin') handleNav('admin_portal');
-              }}
+              onClick={() => handleNav('features')} 
               className="block w-full text-left px-4 py-3 text-sm font-bold text-gray-400 hover:text-black"
             >
-              {!user ? 'Browse Rides' : user.role === 'student' ? 'Student Portal' : user.role === 'driver' ? 'Driver Portal' : 'Admin Portal'}
+              See Features
             </button>
+            {user && (
+              <button 
+                onClick={() => {
+                  if (user.role === 'student') handleNav('student_portal');
+                  else if (user.role === 'driver') handleNav('driver_portal');
+                  else if (user.role === 'admin') handleNav('admin_portal');
+                }}
+                className="block w-full text-left px-4 py-3 text-sm font-bold text-gray-400 hover:text-black"
+              >
+                {user.role === 'student' ? 'Student Portal' : user.role === 'driver' ? 'Driver Portal' : 'Admin Portal'}
+              </button>
+            )}
             <div className="my-4 border-t border-gray-100 pt-4">
               {user ? (
                 <>

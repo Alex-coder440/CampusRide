@@ -143,7 +143,7 @@ export default function Home({ setCurrentView }: HomeProps) {
                 Get Started
               </button>
               <button 
-                onClick={() => setCurrentView('rides')}
+                onClick={() => setCurrentView('features')}
                 className="inline-flex items-center justify-center bg-white border border-gray-200 px-8 py-3.5 text-sm font-medium text-black transition-all hover:bg-gray-50 hover:scale-105 active:scale-95 hover:shadow-sm rounded-full"
               >
                 See Features

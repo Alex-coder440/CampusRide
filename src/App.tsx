@@ -6,10 +6,11 @@ import Navigation from './components/Navigation';
 import DriverPortal from './components/DriverPortal';
 import AdminPortal from './components/AdminPortal';
 import Profile from './components/Profile';
+import Features from './components/Features';
 import { User, Ride, WelfareApplication, ExeatApplication } from './types';
 import { io } from 'socket.io-client';
 
-export type ViewState = 'home' | 'rides' | 'auth_student' | 'auth_driver' | 'login' | 'student_portal' | 'driver_portal' | 'admin_portal' | 'profile';
+export type ViewState = 'home' | 'features' | 'rides' | 'auth_student' | 'auth_driver' | 'login' | 'student_portal' | 'driver_portal' | 'admin_portal' | 'profile';
 
 const initialUsers: User[] = [];
 
@@ -20,8 +21,27 @@ const initialExeatApps: ExeatApplication[] = [];
 const socket = io(); // Connects to the host that served the page
 
 export default function App() {
-  const [currentViewInternal, setCurrentViewInternal] = useState<ViewState>('home');
-  const [user, setUser] = useState<User | null>(null);
+  const [currentViewInternal, setCurrentViewInternal] = useState<ViewState>(() => {
+    const savedView = localStorage.getItem('appState_view');
+    return (savedView as ViewState) || 'home';
+  });
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('appState_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('appState_view', currentViewInternal);
+  }, [currentViewInternal]);
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('appState_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('appState_user');
+    }
+  }, [user]);
+
   const [rides, setRides] = useState<Ride[]>([]);
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [welfareApplications, setWelfareApplications] = useState<WelfareApplication[]>(initialWelfareApps);
@@ -181,6 +201,7 @@ export default function App() {
       
       <main className="flex-1 flex flex-col">
         {currentView === 'home' && <Home setCurrentView={setCurrentView} />}
+        {currentView === 'features' && <Features />}
         {(currentView === 'rides' || currentView === 'student_portal') && (
           <Rides 
             setCurrentView={setCurrentView} 

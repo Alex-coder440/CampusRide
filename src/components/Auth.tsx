@@ -20,6 +20,7 @@ export default function Auth({ currentView, setCurrentView, onLogin }: AuthProps
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [adminId, setAdminId] = useState('');
   const [password, setPassword] = useState('');
   const [driverName, setDriverName] = useState('');
   const [adminName, setAdminName] = useState('');
@@ -208,15 +209,19 @@ export default function Auth({ currentView, setCurrentView, onLogin }: AuthProps
           <form onSubmit={handleSubmit} className="space-y-5">
              <div className="space-y-2">
                <label className="text-[10px] font-bold text-gray-400 block uppercase tracking-widest">Admin ID</label>
-               <input key="admin-id" type="text" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin_01" className="w-full px-4 py-3 bg-white border border-gray-200 focus:border-black outline-none transition text-sm text-black placeholder:text-gray-400 font-medium rounded-none" />
+               <input key="admin-id" type="text" required value={adminId} onChange={(e) => setAdminId(e.target.value)} placeholder="admin_01" className="w-full px-4 py-3 bg-white border border-gray-200 focus:border-black outline-none transition text-sm text-black placeholder:text-gray-400 font-medium rounded-none" />
              </div>
              <div className="space-y-2">
                <label className="text-[10px] font-bold text-gray-400 block uppercase tracking-widest">Full name</label>
                <input key="admin-name" type="text" required value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="John Doe" className="w-full px-4 py-3 bg-white border border-gray-200 focus:border-black outline-none transition text-sm text-black placeholder:text-gray-400 font-medium rounded-none" />
              </div>
              <div className="space-y-2">
+               <label className="text-[10px] font-bold text-gray-400 block uppercase tracking-widest">Email</label>
+               <input key="admin-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@campus.edu" className="w-full px-4 py-3 bg-white border border-gray-200 focus:border-black outline-none transition text-sm text-black placeholder:text-gray-400 font-medium rounded-none" />
+             </div>
+             <div className="space-y-2">
                <label className="text-[10px] font-bold text-gray-400 block uppercase tracking-widest">Password</label>
-               <input key="admin-password" type="password" required placeholder="••••••••" className="w-full px-4 py-3 bg-white border border-gray-200 focus:border-black outline-none transition text-sm text-black placeholder:text-gray-400 font-medium rounded-none" />
+               <input key="admin-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full px-4 py-3 bg-white border border-gray-200 focus:border-black outline-none transition text-sm text-black placeholder:text-gray-400 font-medium rounded-none" />
              </div>
              <button 
                 type="submit"
