@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { Search, MapPin, Calendar, Clock, Users, ArrowRight, Star, Car, User, X, Upload } from 'lucide-react';
 import * as motion from 'motion/react-client';
 import { Ride, RideType, WelfareApplication, ExeatApplication } from '../types';
+import { logToSheet } from '../utils/sheets';
 
 const validLocations = [
   "Shuttle Stand",
@@ -64,6 +65,12 @@ export default function Rides({
   const [exeatMatric, setExeatMatric] = useState('');
   const [exeatUploadedFile, setExeatUploadedFile] = useState<File | null>(null);
   const exeatFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [paymentRidePayload, setPaymentRidePayload] = useState<{ id: string, seats: number, dropoff: string, time: string, pickup: string, total: number } | null>(null);
+  const [paymentStep, setPaymentStep] = useState<'details' | 'processing' | 'success'>('details');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvv, setCvv] = useState('');
 
   // Automatically fill student details from existing applications (if entered before) or user profile
   useEffect(() => {
@@ -600,12 +607,171 @@ export default function Rides({
             className="min-h-screen relative p-6 sm:p-10 w-full max-w-lg mx-auto flex flex-col justify-center py-16"
           >
             <button 
-              onClick={() => { setSelectedRide(null); setUploadedFile(null); }}
+              onClick={() => { 
+                if (paymentRidePayload && paymentStep === 'details') {
+                  setPaymentRidePayload(null);
+                } else if (paymentStep === 'success') {
+                  setSelectedRide(null); 
+                  setUploadedFile(null);
+                  setPaymentRidePayload(null);
+                  setPaymentStep('details');
+                } else {
+                  setSelectedRide(null); 
+                  setUploadedFile(null); 
+                }
+              }}
               className="absolute top-6 right-6 text-gray-400 hover:text-black bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
-            <h2 className="text-3xl font-black text-black mb-8 tracking-tight">Confirm Booking</h2>
+            
+            {paymentRidePayload ? (
+              <>
+                <h2 className="text-3xl font-black text-black mb-8 tracking-tight">Payment Setup</h2>
+                
+                {paymentStep === 'details' && (
+                  <div className="flex flex-col gap-6">
+                    <div className="bg-gray-50 p-6 border border-gray-100 rounded-3xl flex flex-col gap-4 shadow-inner">
+                      <div className="flex justify-between items-center pb-4 border-b border-gray-200/60">
+                        <span className="text-[10px] uppercase tracking-widest font-bold text-gray-500">Amount Due</span>
+                        <span className="text-black font-black text-3xl">₦{paymentRidePayload.total}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm font-medium pt-2">
+                        <span className="text-gray-500">Ride</span>
+                        <span className="text-black">{selectedRide.from} to {paymentRidePayload.dropoff}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm font-medium">
+                        <span className="text-gray-500">Seats</span>
+                        <span className="text-black">{paymentRidePayload.seats} Ticket(s)</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Card Number</label>
+                        <input
+                          type="text"
+                          value={cardNumber}
+                          onChange={(e) => setCardNumber(e.target.value)}
+                          placeholder="0000 0000 0000 0000"
+                          maxLength={19}
+                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-black outline-none focus:border-black"
+                        />
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="w-1/2 space-y-2">
+                          <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400">Expiry (MM/YY)</label>
+                          <input
+                            type="text"
+                            value={expiry}
+                            onChange={(e) => setExpiry(e.target.value)}
+                            placeholder="MM/YY"
+                            maxLength={5}
+                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-black outline-none focus:border-black"
+                          />
+                        </div>
+                        <div className="w-1/2 space-y-2">
+                          <label className="text-[10px] uppercase tracking-widest font-bold text-gray-400">CVV</label>
+                          <input
+                            type="password"
+                            value={cvv}
+                            onChange={(e) => setCvv(e.target.value)}
+                            placeholder="•••"
+                            maxLength={3}
+                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-black outline-none focus:border-black"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={() => {
+                        if (!cardNumber || !expiry || !cvv) {
+                           alert('Please fill out all payment fields.');
+                           return;
+                        }
+                        setPaymentStep('processing');
+                        setTimeout(async () => {
+                          if (bookRide) bookRide(paymentRidePayload.id, paymentRidePayload.seats, paymentRidePayload.dropoff, paymentRidePayload.time, paymentRidePayload.pickup);
+                          
+                          if (user && user.role === 'student') {
+                             const nameParts = user.name.split(' ');
+                             await logToSheet('Student', [
+                                nameParts[0] || '', 
+                                nameParts.slice(1).join(' ') || '', 
+                                user.matricNo || '', 
+                                user.email, 
+                                selectedRide.driver, 
+                                paymentRidePayload.seats, 
+                                paymentRidePayload.time, 
+                                paymentRidePayload.pickup, 
+                                paymentRidePayload.dropoff, 
+                                paymentRidePayload.total
+                             ]);
+                          }
+                          setPaymentStep('success');
+                        }, 2000);
+                      }}
+                      className="w-full h-14 bg-black text-white font-bold text-xs uppercase tracking-widest hover:bg-gray-800 transition-all active:scale-[0.98] rounded-xl mt-4 shadow-md hover:shadow-xl flex items-center justify-center gap-2"
+                    >
+                      Pay ₦{paymentRidePayload.total} Securely <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                {paymentStep === 'processing' && (
+                  <div className="flex flex-col items-center justify-center py-12 gap-6 text-center">
+                    <div className="relative">
+                      <div className="w-16 h-16 border-4 border-gray-100 rounded-full"></div>
+                      <div className="w-16 h-16 border-4 border-blue-600 rounded-full absolute inset-0 border-t-transparent animate-spin"></div>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-xl text-black mb-1">Processing Payment</h3>
+                      <p className="font-medium text-sm text-gray-500">Contacting your bank securely...</p>
+                    </div>
+                  </div>
+                )}
+
+                {paymentStep === 'success' && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="flex flex-col items-center justify-center py-12 gap-6 text-center"
+                  >
+                    <div className="w-20 h-20 rounded-full bg-green-50 text-green-500 flex items-center justify-center">
+                      <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="font-black text-2xl text-black mb-2 tracking-tight">Payment Successful</h3>
+                      <p className="font-medium text-gray-500 text-sm max-w-xs mx-auto">Your ride of ₦{paymentRidePayload.total} has been booked. Check your bookings tab for details.</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setSelectedRide(null); 
+                        setUploadedFile(null);
+                        setBookingDropoff('');
+                        setBookingPickup('');
+                        setBookingSeats(1);
+                        setBookingTime('');
+                        setPaymentRidePayload(null);
+                        setPaymentStep('details');
+                        setCardNumber('');
+                        setExpiry('');
+                        setCvv('');
+                        setActiveTab('bookings');
+                      }}
+                      className="w-full h-14 bg-black text-white font-bold text-xs uppercase tracking-widest hover:bg-gray-800 transition-all active:scale-[0.98] rounded-xl mt-4 shadow-md hover:shadow-xl"
+                    >
+                      Done
+                    </button>
+                  </motion.div>
+                )}
+              </>
+            ) : (
+              <>
+                <h2 className="text-3xl font-black text-black mb-8 tracking-tight">Confirm Booking</h2>
                      {selectedRide.type === 'welfare' && welfareSubmitted && welfareApproved && (
               <div className="mb-6 bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl text-sm font-medium shadow-sm">
                 <strong className="text-green-900 block mb-1">Welfare Approved</strong> You can book this ride for free.
@@ -709,18 +875,47 @@ export default function Rides({
                     if (user) {
                       const finalSeats = isWelfareRoute ? 1 : bookingSeats;
                       const isFree = isWelfareRoute || selectedRide.price === 0;
-                      const finalTotal = isFree ? 'Free' : `₦${selectedRide.price * finalSeats}`;
+                      const finalTotalNum = isFree ? 0 : selectedRide.price * finalSeats;
                       const finalPickup = isWelfareRoute || selectedRide.type === 'out_of_campus' ? bookingPickup : selectedRide.from;
                       
-                      if (bookRide) bookRide(selectedRide.id, finalSeats, bookingDropoff, bookingTime, finalPickup);
-                      alert(`Successfully booked ${finalSeats} seat(s) to ${bookingDropoff} at ${bookingTime}! Total: ${finalTotal}`);
-                      setSelectedRide(null);
-                      setUploadedFile(null);
-                      setBookingDropoff('');
-                      setBookingPickup('');
-                      setBookingSeats(1);
-                      setBookingTime('');
-                      setActiveTab('bookings');
+                      if (isFree) {
+                        if (bookRide) bookRide(selectedRide.id, finalSeats, bookingDropoff, bookingTime, finalPickup);
+                        
+                        if (user && user.role === 'student') {
+                           const nameParts = user.name.split(' ');
+                           logToSheet('Student', [
+                              nameParts[0] || '', 
+                              nameParts.slice(1).join(' ') || '', 
+                              user.matricNo || '', 
+                              user.email, 
+                              selectedRide.driver, 
+                              finalSeats, 
+                              bookingTime, 
+                              finalPickup, 
+                              bookingDropoff, 
+                              0
+                           ]);
+                        }
+                        
+                        alert(`Successfully booked ${finalSeats} seat(s) to ${bookingDropoff} at ${bookingTime}! Total: Free`);
+                        setSelectedRide(null);
+                        setUploadedFile(null);
+                        setBookingDropoff('');
+                        setBookingPickup('');
+                        setBookingSeats(1);
+                        setBookingTime('');
+                        setActiveTab('bookings');
+                      } else {
+                        setPaymentRidePayload({
+                          id: selectedRide.id,
+                          seats: finalSeats,
+                          dropoff: bookingDropoff,
+                          time: bookingTime,
+                          pickup: finalPickup,
+                          total: finalTotalNum
+                        });
+                        setPaymentStep('details');
+                      }
                     } else {
                       setCurrentView?.('login');
                     }
@@ -731,6 +926,8 @@ export default function Rides({
                 </button>
               </>
             )}
+            </>
+          )}
           </motion.div>
         </div>
       )}

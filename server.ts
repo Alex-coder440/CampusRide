@@ -6,6 +6,7 @@ import { Server as SocketIOServer } from "socket.io";
 import { GoogleGenAI } from "@google/genai";
 import * as dotenv from 'dotenv';
 import cors from "cors";
+import { google } from "googleapis";
 
 dotenv.config();
 
@@ -16,6 +17,27 @@ try {
   }
 } catch (e) {
   console.error("Failed to initialize GoogleGenAI", e);
+}
+
+// Google Sheets API setup
+function getSheetsClient() {
+  if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON || !process.env.SPREADSHEET_ID) {
+    throw new Error('Google Sheets credentials are not configured');
+  }
+
+  let credentials;
+  try {
+    credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+  } catch (err) {
+    throw new Error('Invalid GOOGLE_SERVICE_ACCOUNT_JSON format');
+  }
+
+  const auth = new google.auth.GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
+
+  return google.sheets({ version: 'v4', auth });
 }
 
 // In-memory array of rides
@@ -136,6 +158,85 @@ async function startServer() {
     } catch (error: any) {
       console.error("GenAI Error:", error);
       res.status(500).json({ error: "Something went wrong", details: error.message });
+    }
+  });
+
+  app.get("/api/sheets", async (req, res): Promise<any> => {
+    try {
+      const sheets = getSheetsClient();
+      const spreadsheetId = process.env.SPREADSHEET_ID;
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'Sheet1!A1:D100', // adjust this as needed
+      });
+      res.json(response.data.values || []);
+    } catch (error: any) {
+      console.error("Google Sheets GET Error:", error);
+      res.status(500).json({ error: "Failed to fetch from Google Sheets", details: error.message });
+    }
+  });
+
+  app.post("/api/sheets", async (req, res): Promise<any> => {
+    try {
+      const { data, sheetName, updateKey } = req.body;
+      if (!data || !Array.isArray(data)) {
+        return res.status(400).json({ error: "Valid data array is required" });
+      }
+
+      const sheets = getSheetsClient();
+      const spreadsheetId = process.env.SPREADSHEET_ID;
+      const targetSheet = sheetName || 'Sheet1';
+      
+      if (updateKey) {
+        // Fetch existing data to find the row
+        const getRes = await sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: `${targetSheet}!A:Z`,
+        });
+        const rows = getRes.data.values || [];
+        
+        let rowIndex = -1;
+        for (let i = 0; i < rows.length; i++) {
+          if (rows[i].includes(updateKey)) {
+            rowIndex = i;
+            break;
+          }
+        }
+
+        if (rowIndex !== -1) {
+          // Merge existing row with new data
+          const existingRowText = rows[rowIndex];
+          const newRowText = [...existingRowText];
+          for (let col = 0; col < data.length; col++) {
+            if (data[col] !== undefined && data[col] !== null && data[col] !== '') {
+               newRowText[col] = data[col]; // Overwrite with new data if provided
+            }
+          }
+          
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `${targetSheet}!A${rowIndex + 1}`,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: { values: [newRowText] }
+          });
+          
+          return res.json({ success: true, message: 'Row updated successfully' });
+        }
+      }
+      
+      const response = await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: `${targetSheet}!A:A`, // dynamic sheet name
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [data],
+        },
+      });
+
+      res.json({ success: true, message: 'Row appended successfully', response: response.data });
+    } catch (error: any) {
+      console.error("Google Sheets POST Error:", error);
+      res.status(500).json({ error: "Failed to append to Google Sheets", details: error.message });
     }
   });
 

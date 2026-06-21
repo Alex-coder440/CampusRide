@@ -7,10 +7,12 @@ import DriverPortal from './components/DriverPortal';
 import AdminPortal from './components/AdminPortal';
 import Profile from './components/Profile';
 import Features from './components/Features';
+import Feedback from './components/Feedback';
 import { User, Ride, WelfareApplication, ExeatApplication } from './types';
 import { io } from 'socket.io-client';
+import { logToSheet } from './utils/sheets';
 
-export type ViewState = 'home' | 'features' | 'rides' | 'auth_student' | 'auth_driver' | 'login' | 'student_portal' | 'driver_portal' | 'admin_portal' | 'profile';
+export type ViewState = 'home' | 'features' | 'rides' | 'auth_student' | 'auth_driver' | 'login' | 'student_portal' | 'driver_portal' | 'admin_portal' | 'profile' | 'feedback';
 
 const initialUsers: User[] = [];
 
@@ -136,6 +138,20 @@ export default function App() {
     if (u) {
       socket.emit("users:update", { ...u, status: 'verified' });
       if (user?.id === userId) setUser({ ...u, status: 'verified' });
+
+      // Log verification to Admin sheet
+      if (user && user.role === 'admin') {
+        logToSheet('Admin', [
+          user.id,
+          user.name,
+          user.email,
+          '',
+          '',
+          'Yes',
+          '', '', '',
+          u.id
+        ], u.id);
+      }
     }
   };
 
@@ -149,10 +165,36 @@ export default function App() {
 
   const updateWelfareStatus = (appId: string, status: 'approved' | 'rejected') => {
     socket.emit("welfare:updateStatus", { id: appId, status });
+    const app = welfareApplications.find(a => a.id === appId);
+    if (app && user && user.role === 'admin' && status === 'approved') {
+       logToSheet('Admin', [
+          user.id,
+          user.name,
+          user.email,
+          '', '', '',
+          '', // do not overwrite applicant name
+          '', // do not overwrite approval type
+          'Yes',
+          appId // appId is user.id
+       ], appId);
+    }
   };
 
   const updateExeatStatus = (appId: string, status: 'approved' | 'rejected') => {
     socket.emit("exeat:updateStatus", { id: appId, status });
+    const app = exeatApplications.find(a => a.id === appId);
+    if (app && user && user.role === 'admin' && status === 'approved') {
+       logToSheet('Admin', [
+          user.id,
+          user.name,
+          user.email,
+          '', '', '',
+          '',
+          '',
+          'Yes',
+          appId + '-exeat'
+       ], appId + '-exeat');
+    }
   };
 
   const handleLogout = () => {
@@ -181,12 +223,31 @@ export default function App() {
 
   const submitWelfare = (firstName: string, lastName: string, matricNo: string, fileName: string, fileDataURL?: string) => {
     if (!user) return;
-    socket.emit("welfare:submit", { id: user.id, firstName, lastName, matricNo, fileName, fileDataURL, status: 'pending' });
+    const appId = Math.random().toString(36).substr(2, 9);
+    socket.emit("welfare:submit", { id: user.id /* using user.id historically */, firstName, lastName, matricNo, fileName, fileDataURL, status: 'pending' });
+    
+    // Log Welfare submission action to Admin sheet for approval later
+    logToSheet('Admin', [
+      '', '', '', '', '', '',
+      `${firstName} ${lastName}`,
+      'Welfare',
+      'No',
+      user.id
+    ], user.id);
   };
 
   const submitExeat = (firstName: string, lastName: string, matricNo: string, fileName: string, fileDataURL?: string) => {
     if (!user) return;
     socket.emit("exeat:submit", { id: user.id, firstName, lastName, matricNo, fileName, fileDataURL, status: 'pending' });
+    
+    // Log Exeat submission action to Admin sheet for approval later
+    logToSheet('Admin', [
+      '', '', '', '', '', '',
+      `${firstName} ${lastName}`,
+      'Exeat',
+      'No',
+      user.id + '-exeat'
+    ], user.id + '-exeat');
   };
 
   const handleUpdateUser = (updatedUser: User) => {
@@ -202,6 +263,7 @@ export default function App() {
       <main className="flex-1 flex flex-col">
         {currentView === 'home' && <Home setCurrentView={setCurrentView} />}
         {currentView === 'features' && <Features />}
+        {currentView === 'feedback' && <Feedback />}
         {(currentView === 'rides' || currentView === 'student_portal') && (
           <Rides 
             setCurrentView={setCurrentView} 

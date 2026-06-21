@@ -19,19 +19,20 @@ export default function Auth({ currentView, setCurrentView, onLogin }: AuthProps
   // Input states
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [matricNo, setMatricNo] = useState('');
+  const [shuttleNo, setShuttleNo] = useState('');
   const [email, setEmail] = useState('');
   const [adminId, setAdminId] = useState('');
   const [password, setPassword] = useState('');
   const [driverName, setDriverName] = useState('');
   const [adminName, setAdminName] = useState('');
 
-
   useEffect(() => {
     if (currentView === 'auth_driver') setActiveTab('driver');
     else if (currentView === 'auth_student') setActiveTab('student');
   }, [currentView]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     let name = '';
@@ -43,13 +44,42 @@ export default function Auth({ currentView, setCurrentView, onLogin }: AuthProps
       name = isLogin ? 'Admin' : adminName;
     }
     
+    const newUserId = Math.random().toString(36).substr(2, 9);
+    
+    if (!isLogin) {
+      try {
+        if (activeTab === 'admin') {
+          await fetch('/api/sheets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sheetName: 'Admin', data: [adminId, adminName, email, '', '', '', '', '', '', newUserId] })
+          });
+        } else {
+          // Log Registration action to Admin sheet for verification later
+          await fetch('/api/sheets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+               sheetName: 'Admin', 
+               updateKey: newUserId,
+               data: ['', '', '', name, email, 'No', '', '', '', newUserId] 
+            })
+          });
+        }
+      } catch (err) {
+        console.error('Failed to log to sheet:', err);
+      }
+    }
+    
     onLogin({
-      id: Math.random().toString(36).substr(2, 9),
+      id: newUserId,
       name: name || 'User',
       role: activeTab,
       email: email || 'user@example.com',
       driverType: activeTab === 'driver' ? driverType : undefined,
       status: isLogin ? 'verified' : (activeTab === 'admin' ? 'verified' : 'pending'),
+      matricNo,
+      shuttleNo,
     });
   };
 
@@ -138,7 +168,7 @@ export default function Auth({ currentView, setCurrentView, onLogin }: AuthProps
              </div>
              <div className="space-y-2">
                <label className="text-[10px] font-bold text-gray-400 block uppercase tracking-widest">Mat. number</label>
-               <input key="student-reg" type="text" required placeholder="29ZB000000" className="w-full px-4 py-3 bg-white border border-gray-200 focus:border-black outline-none transition text-sm text-black placeholder:text-gray-400 font-medium rounded-none" />
+               <input key="student-reg" type="text" value={matricNo} onChange={(e) => setMatricNo(e.target.value)} required placeholder="29ZB000000" className="w-full px-4 py-3 bg-white border border-gray-200 focus:border-black outline-none transition text-sm text-black placeholder:text-gray-400 font-medium rounded-none" />
              </div>
              <div className="space-y-2">
                <label className="text-[10px] font-bold text-gray-400 block uppercase tracking-widest">Password</label>
@@ -184,7 +214,7 @@ export default function Auth({ currentView, setCurrentView, onLogin }: AuthProps
                </div>
                <div className="space-y-2">
                  <label className="text-[10px] font-bold text-gray-400 block uppercase tracking-widest">Shuttle No</label>
-                 <input key="driver-plate" type="text" required placeholder="10" className="w-full px-4 py-3 bg-white border border-gray-200 focus:border-black outline-none transition text-sm text-black placeholder:text-gray-400 font-medium rounded-none" />
+                 <input key="driver-plate" type="text" value={shuttleNo} onChange={(e) => setShuttleNo(e.target.value)} required placeholder="10" className="w-full px-4 py-3 bg-white border border-gray-200 focus:border-black outline-none transition text-sm text-black placeholder:text-gray-400 font-medium rounded-none" />
                </div>
              </div>
              
