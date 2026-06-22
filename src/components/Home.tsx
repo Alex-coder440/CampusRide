@@ -127,7 +127,7 @@ export default function Home({ setCurrentView }: HomeProps) {
               transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
               className="max-w-2xl text-base sm:text-lg text-gray-500 mb-10 font-medium leading-relaxed"
             >
-              Your Journey to Seamless Campus Connectivity Starts Here: Explore Our Integrated Transit Hub.
+              Movement around Covenant University made Simple: Explore Our Seamless Integrated Booking App.
             </motion.p>
             
             <motion.div 
