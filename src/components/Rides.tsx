@@ -2,7 +2,6 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { Search, MapPin, Calendar, Clock, Users, ArrowRight, Star, Car, User, X, Upload } from 'lucide-react';
 import * as motion from 'motion/react-client';
 import { Ride, RideType, WelfareApplication, ExeatApplication } from '../types';
-import { logToSheet } from '../utils/sheets';
 
 const validLocations = [
   "Shuttle Stand",
@@ -691,24 +690,8 @@ export default function Rides({
                            return;
                         }
                         setPaymentStep('processing');
-                        setTimeout(async () => {
+                        setTimeout(() => {
                           if (bookRide) bookRide(paymentRidePayload.id, paymentRidePayload.seats, paymentRidePayload.dropoff, paymentRidePayload.time, paymentRidePayload.pickup);
-                          
-                          if (user && user.role === 'student') {
-                             const nameParts = user.name.split(' ');
-                             await logToSheet('Student', [
-                                nameParts[0] || '', 
-                                nameParts.slice(1).join(' ') || '', 
-                                user.matricNo || '', 
-                                user.email, 
-                                selectedRide.driver, 
-                                paymentRidePayload.seats, 
-                                paymentRidePayload.time, 
-                                paymentRidePayload.pickup, 
-                                paymentRidePayload.dropoff, 
-                                paymentRidePayload.total
-                             ]);
-                          }
                           setPaymentStep('success');
                         }, 2000);
                       }}
@@ -880,23 +863,6 @@ export default function Rides({
                       
                       if (isFree) {
                         if (bookRide) bookRide(selectedRide.id, finalSeats, bookingDropoff, bookingTime, finalPickup);
-                        
-                        if (user && user.role === 'student') {
-                           const nameParts = user.name.split(' ');
-                           logToSheet('Student', [
-                              nameParts[0] || '', 
-                              nameParts.slice(1).join(' ') || '', 
-                              user.matricNo || '', 
-                              user.email, 
-                              selectedRide.driver, 
-                              finalSeats, 
-                              bookingTime, 
-                              finalPickup, 
-                              bookingDropoff, 
-                              0
-                           ]);
-                        }
-                        
                         alert(`Successfully booked ${finalSeats} seat(s) to ${bookingDropoff} at ${bookingTime}! Total: Free`);
                         setSelectedRide(null);
                         setUploadedFile(null);

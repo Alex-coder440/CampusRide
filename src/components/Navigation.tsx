@@ -42,12 +42,6 @@ export default function Navigation({ currentView, setCurrentView, user, onLogout
             >
               Features
             </button>
-            <button 
-              onClick={() => handleNav('feedback')} 
-              className={`transition-colors hover:text-black hover:scale-105 active:scale-95 ${currentView === 'feedback' ? 'text-black' : ''}`}
-            >
-              Community Feedback
-            </button>
             {user && (
               <button 
                 onClick={() => {
@@ -124,12 +118,6 @@ export default function Navigation({ currentView, setCurrentView, user, onLogout
               className="block w-full text-left px-4 py-3 text-sm font-bold text-gray-400 hover:text-black"
             >
               See Features
-            </button>
-            <button 
-              onClick={() => handleNav('feedback')} 
-              className="block w-full text-left px-4 py-3 text-sm font-bold text-gray-400 hover:text-black"
-            >
-              Community Feedback
             </button>
             {user && (
               <button 

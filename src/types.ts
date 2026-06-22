@@ -8,8 +8,6 @@ export interface User {
   email: string;
   avatar?: string;
   status?: 'pending' | 'verified' | 'rejected';
-  matricNo?: string;
-  shuttleNo?: string;
 }
 
 export interface WelfareApplication {
