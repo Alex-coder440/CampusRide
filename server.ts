@@ -313,12 +313,12 @@ async function startServer() {
 
   app.post('/api/rides/post', async (req, res) => {
     try {
-      const { DriverID, Seats, Location } = req.body;
+      const { DriverID, DriverName, Seats, Location } = req.body;
       const result = await query(`
-        INSERT INTO PostedRides (DriverID, Seats, Location) 
-        VALUES ($1, $2, $3) 
+        INSERT INTO PostedRides (DriverID, DriverName, Seats, Location) 
+        VALUES ($1, $2, $3, $4) 
         RETURNING *
-      `, [DriverID, Seats, Location]);
+      `, [DriverID, DriverName, Seats, Location]);
       res.json(result.rows[0]);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -327,12 +327,12 @@ async function startServer() {
 
   app.post('/api/rides/book', async (req, res) => {
     try {
-      const { MatricNumber, DriverID, Seats, Location, Destination, Amount, Time = new Date().toISOString() } = req.body;
+      const { MatricNumber, DriverID, DriverName, Seats, Location, Destination, Amount, Time = new Date().toISOString() } = req.body;
       const result = await query(`
-        INSERT INTO BookedRides (MatricNumber, DriverID, Seats, Time, Location, Destination, Amount) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7) 
+        INSERT INTO BookedRides (MatricNumber, DriverID, DriverName, Seats, Time, Location, Destination, Amount) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
         RETURNING *
-      `, [MatricNumber, DriverID, Seats, Time, Location, Destination, Amount]);
+      `, [MatricNumber, DriverID, DriverName, Seats, Time, Location, Destination, Amount]);
       res.json(result.rows[0]);
     } catch (err: any) {
       res.status(500).json({ error: err.message });

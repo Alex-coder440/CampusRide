@@ -55,24 +55,21 @@ export const initDB = async () => {
 
     CREATE TABLE IF NOT EXISTS PostedRides (
         PostID SERIAL PRIMARY KEY,
-        DriverID INT NOT NULL,
+        DriverID INT,
         Seats INT NOT NULL,
         Location VARCHAR(100) NOT NULL,
-        Completed BOOLEAN DEFAULT FALSE,
-        FOREIGN KEY (DriverID) REFERENCES Drivers(DriverID) ON DELETE CASCADE
+        Completed BOOLEAN DEFAULT FALSE
     );
 
     CREATE TABLE IF NOT EXISTS BookedRides (
         BookingID SERIAL PRIMARY KEY,
-        MatricNumber VARCHAR(20) NOT NULL,
-        DriverID INT NOT NULL,
+        MatricNumber VARCHAR(20),
+        DriverID INT,
         Seats INT NOT NULL,
-        Time TIMESTAMP NOT NULL,
+        Time VARCHAR(100) NOT NULL,
         Location VARCHAR(100) NOT NULL,
         Destination VARCHAR(100) NOT NULL,
-        Amount DECIMAL(10, 2) NOT NULL,
-        FOREIGN KEY (MatricNumber) REFERENCES Students(MatricNumber) ON DELETE CASCADE,
-        FOREIGN KEY (DriverID) REFERENCES Drivers(DriverID) ON DELETE CASCADE
+        Amount DECIMAL(10, 2) NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS Appeals (
@@ -81,6 +78,14 @@ export const initDB = async () => {
         Type VARCHAR(50) NOT NULL,
         Approved BOOLEAN DEFAULT FALSE
     );
+
+    ALTER TABLE BookedRides ADD COLUMN IF NOT EXISTS DriverName VARCHAR(100);
+    ALTER TABLE PostedRides ADD COLUMN IF NOT EXISTS DriverName VARCHAR(100);
+    
+    ALTER TABLE BookedRides ALTER COLUMN Time TYPE VARCHAR(100);
+    ALTER TABLE BookedRides ALTER COLUMN MatricNumber DROP NOT NULL;
+    ALTER TABLE BookedRides ALTER COLUMN DriverID DROP NOT NULL;
+    ALTER TABLE PostedRides ALTER COLUMN DriverID DROP NOT NULL;
   `;
   try {
     await pool.query(initSql);

@@ -211,6 +211,7 @@ export default function App() {
     
     const ride = rides.find(r => r.id === rideId);
     const driverId = ride ? parseInt(ride.driverId) || 1 : 1;
+    const driverName = ride?.driver || 'Unknown Driver';
     const amount = ride ? ride.price * seats : 0;
 
     try {
@@ -220,6 +221,7 @@ export default function App() {
         body: JSON.stringify({
           MatricNumber: user.matricNo || `M-${user.id}`,
           DriverID: driverId,
+          DriverName: driverName,
           Seats: seats,
           Location: pickup || ride?.from || 'Campus',
           Destination: destination || ride?.to || 'Off Campus',
@@ -242,6 +244,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           DriverID: parseInt(ride.driverId) || 1,
+          DriverName: ride.driver,
           Seats: ride.seats,
           Location: ride.from
         })
