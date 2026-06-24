@@ -9,6 +9,7 @@ import Profile from './components/Profile';
 import Features from './components/Features';
 import { User, Ride, WelfareApplication, ExeatApplication } from './types';
 import { io } from 'socket.io-client';
+import { logToSheet } from './utils/sheets';
 
 export type ViewState = 'home' | 'features' | 'rides' | 'auth_student' | 'auth_driver' | 'login' | 'student_portal' | 'driver_portal' | 'admin_portal' | 'profile';
 
@@ -136,6 +137,20 @@ export default function App() {
     if (u) {
       socket.emit("users:update", { ...u, status: 'verified' });
       if (user?.id === userId) setUser({ ...u, status: 'verified' });
+
+      // Log verification to Admin sheet
+      if (user && user.role === 'admin') {
+        logToSheet('Admin', [
+          user.id,
+          user.name,
+          user.email,
+          '',
+          '',
+          'Yes',
+          '', '', '',
+          u.id
+        ], u.id);
+      }
     }
   };
 
@@ -149,10 +164,36 @@ export default function App() {
 
   const updateWelfareStatus = (appId: string, status: 'approved' | 'rejected') => {
     socket.emit("welfare:updateStatus", { id: appId, status });
+    const app = welfareApplications.find(a => a.id === appId);
+    if (app && user && user.role === 'admin' && status === 'approved') {
+       logToSheet('Admin', [
+          user.id,
+          user.name,
+          user.email,
+          '', '', '',
+          '', // do not overwrite applicant name
+          '', // do not overwrite approval type
+          'Yes',
+          appId // appId is user.id
+       ], appId);
+    }
   };
 
   const updateExeatStatus = (appId: string, status: 'approved' | 'rejected') => {
     socket.emit("exeat:updateStatus", { id: appId, status });
+    const app = exeatApplications.find(a => a.id === appId);
+    if (app && user && user.role === 'admin' && status === 'approved') {
+       logToSheet('Admin', [
+          user.id,
+          user.name,
+          user.email,
+          '', '', '',
+          '',
+          '',
+          'Yes',
+          appId + '-exeat'
+       ], appId + '-exeat');
+    }
   };
 
   const handleLogout = () => {
@@ -165,13 +206,50 @@ export default function App() {
     }
   };
 
-  const bookRide = (rideId: string, seats: number = 1, destination: string = '', time: string = '', pickup: string = '') => {
+  const bookRide = async (rideId: string, seats: number = 1, destination: string = '', time: string = '', pickup: string = '') => {
     if (!user || user.role !== 'student') return;
+    
+    const ride = rides.find(r => r.id === rideId);
+    const driverId = ride ? parseInt(ride.driverId) || 1 : 1;
+    const amount = ride ? ride.price * seats : 0;
+
+    try {
+      await fetch('/api/rides/book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          MatricNumber: user.matricNo || `M-${user.id}`,
+          DriverID: driverId,
+          Seats: seats,
+          Location: pickup || ride?.from || 'Campus',
+          Destination: destination || ride?.to || 'Off Campus',
+          Amount: amount,
+          Time: time || new Date().toISOString()
+        })
+      });
+    } catch (err) {
+      console.error('Failed to book ride in Postgres:', err);
+    }
+
     // Emit to server
     socket.emit("rides:book", { rideId, seats, user, destination, time, pickup });
   };
 
-  const addRide = (ride: Ride) => {
+  const addRide = async (ride: Ride) => {
+    try {
+      await fetch('/api/rides/post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          DriverID: parseInt(ride.driverId) || 1,
+          Seats: ride.seats,
+          Location: ride.from
+        })
+      });
+    } catch (err) {
+      console.error('Failed to post ride to Postgres:', err);
+    }
+
     socket.emit("rides:add", ride);
   };
 
@@ -179,14 +257,61 @@ export default function App() {
     socket.emit("rides:updateStatus", { rideId, status });
   };
 
-  const submitWelfare = (firstName: string, lastName: string, matricNo: string, fileName: string, fileDataURL?: string) => {
+  const submitWelfare = async (firstName: string, lastName: string, matricNo: string, fileName: string, fileDataURL?: string) => {
     if (!user) return;
-    socket.emit("welfare:submit", { id: user.id, firstName, lastName, matricNo, fileName, fileDataURL, status: 'pending' });
+    
+    try {
+      await fetch('/api/appeals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Name: `${firstName} ${lastName}`,
+          Type: 'Welfare'
+        })
+      });
+    } catch (err) {
+      console.error('Failed to submit appeal to Postgres:', err);
+    }
+
+    const appId = Math.random().toString(36).substr(2, 9);
+    socket.emit("welfare:submit", { id: user.id /* using user.id historically */, firstName, lastName, matricNo, fileName, fileDataURL, status: 'pending' });
+    
+    // Log Welfare submission action to Admin sheet for approval later
+    logToSheet('Admin', [
+      '', '', '', '', '', '',
+      `${firstName} ${lastName}`,
+      'Welfare',
+      'No',
+      user.id
+    ], user.id);
   };
 
-  const submitExeat = (firstName: string, lastName: string, matricNo: string, fileName: string, fileDataURL?: string) => {
+  const submitExeat = async (firstName: string, lastName: string, matricNo: string, fileName: string, fileDataURL?: string) => {
     if (!user) return;
+    
+    try {
+      await fetch('/api/appeals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Name: `${firstName} ${lastName}`,
+          Type: 'Exeat'
+        })
+      });
+    } catch (err) {
+      console.error('Failed to submit appeal to Postgres:', err);
+    }
+
     socket.emit("exeat:submit", { id: user.id, firstName, lastName, matricNo, fileName, fileDataURL, status: 'pending' });
+    
+    // Log Exeat submission action to Admin sheet for approval later
+    logToSheet('Admin', [
+      '', '', '', '', '', '',
+      `${firstName} ${lastName}`,
+      'Exeat',
+      'No',
+      user.id + '-exeat'
+    ], user.id + '-exeat');
   };
 
   const handleUpdateUser = (updatedUser: User) => {

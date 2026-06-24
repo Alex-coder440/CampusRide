@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Data Export</title>
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --bg-color: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-main: #111827;
+            --text-muted: #6B7280;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            background-color: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .header {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .header p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .export-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .export-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            transition: border-color 0.15s ease;
+        }
+
+        .export-card:hover {
+            border-color: #D1D5DB;
+        }
+
+        .export-info h3 {
+            margin: 0 0 0.25rem 0;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        .export-info p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .btn-download {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.625rem 1.25rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-download:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-download:disabled {
+            background-color: #9CA3AF;
+            cursor: not-allowed;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: none;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>Admin Export Dashboard</h1>
+            <p>Download system data securely from the PostgreSQL database.</p>
+        </div>
+
+        <div class="export-list">
+            <!-- Students Export -->
+            <div class="export-card">
+                <div class="export-info">
+                    <h3>Students Data</h3>
+                    <p>Export all registered students (.csv)</p>
+                </div>
+                <button class="btn-download" onclick="downloadData('/api/v2/export/students', 'students_data.csv', this)">
+                    <span class="spinner"></span>
+                    <span class="btn-text">Download</span>
+                </button>
+            </div>
+
+            <!-- Drivers Export -->
+            <div class="export-card">
+                <div class="export-info">
+                    <h3>Drivers Data</h3>
+                    <p>Export all registered drivers (.csv)</p>
+                </div>
+                <button class="btn-download" onclick="downloadData('/api/v2/export/drivers', 'drivers_data.csv', this)">
+                    <span class="spinner"></span>
+                    <span class="btn-text">Download</span>
+                </button>
+            </div>
+
+            <!-- Admins Export -->
+            <div class="export-card">
+                <div class="export-info">
+                    <h3>Admins Data</h3>
+                    <p>Export all system admins (.csv)</p>
+                </div>
+                <button class="btn-download" onclick="downloadData('/api/v2/export/admins', 'admins_data.csv', this)">
+                    <span class="spinner"></span>
+                    <span class="btn-text">Download</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="admin-container" style="margin-top: 2rem; border-top: 1px solid #E5E7EB; padding-top: 2rem;">
+            <h2>Database Live View</h2>
+            <button id="viewDataBtn" class="btn-download" style="margin-bottom: 1rem;">Refresh Data View</button>
+            
+            <pre id="databaseViewBox" style="background: #f4f4f4; padding: 15px; border: 1px solid #ccc; max-height: 500px; overflow-y: auto; text-align: left; font-family: monospace; margin-top: 20px;">
+                Click the button above to load the current website data...
+            </pre>
+        </div>
+    </div>
+
+    <script>
+        const viewBox = document.getElementById('databaseViewBox');
+        const viewBtn = document.getElementById('viewDataBtn');
+
+        viewBtn.addEventListener('click', () => {
+            viewBox.textContent = "Loading data from database...";
+
+            // Fetch the text data from your backend export endpoint
+            fetch('/api/admin/download-data')
+                .then(response => response.text()) // Use .text() instead of .json()
+                .then(data => {
+                    // Put the clean text format inside the <pre> box
+                    viewBox.textContent = data;
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    viewBox.textContent = "Failed to load database data. Check console for details.";
+                });
+        });
+
+        /**
+         * Fetches data from the given endpoint and triggers a file download using a Blob.
+         * @param {string} url - The backend API endpoint for the export
+         * @param {string} filename - The default filename to save as
+         * @param {HTMLElement} btn - The button element that triggered the action
+         */
+        async function downloadData(url, filename, btn) {
+            const spinner = btn.querySelector('.spinner');
+            const btnText = btn.querySelector('.btn-text');
+
+            // UI Loading state
+            btn.disabled = true;
+            spinner.style.display = 'inline-block';
+            btnText.textContent = 'Downloading...';
+
+            try {
+                // Determine your base backend URL (if hosted on Render, update standard absolute URL here if necessary)
+                // e.g., const backendUrl = 'https://your-render-app.onrender.com' + url;
+                const backendUrl = url;
+
+                const response = await fetch(backendUrl, {
+                    method: 'GET',
+                    headers: {
+                        // Include authorization headers here if your API is secured
+                        // 'Authorization': 'Bearer YOUR_TOKEN'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorMsg = await response.text();
+                    throw new Error(errorMsg || `Server error: ${response.status}`);
+                }
+
+                // 1. Convert response to a Blob (Binary Large Object)
+                const blob = await response.blob();
+
+                // 2. Create a temporary object URL for the Blob
+                const downloadUrl = window.URL.createObjectURL(blob);
+
+                // 3. Create a hidden <a> element to trigger the download
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = downloadUrl;
+                
+                // Allow the 'Content-Disposition' header to suggest a filename, or fallback to the provided parameter
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let suggestedFilename = filename;
+                if (contentDisposition && contentDisposition.includes('filename=')) {
+                    suggestedFilename = contentDisposition.split('filename=')[1].replace(/"/g, '');
+                }
+                
+                a.download = suggestedFilename;
+                document.body.appendChild(a);
+
+                // 4. Programmatically click the anchor to start download
+                a.click();
+
+                // 5. Cleanup the DOM and Release object URL
+                window.URL.revokeObjectURL(downloadUrl);
+                document.body.removeChild(a);
+
+            } catch (error) {
+                console.error("Download failed:", error);
+                alert(`Failed to download file. Ensure data exists and server is running.\n\nError: ${error.message}`);
+            } finally {
+                // Reset UI state
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                btnText.textContent = 'Download';
+            }
+        }
+    </script>
+</body>
+</html>

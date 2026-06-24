@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Ride, RideType } from '../types';
 import { Car, Clock, MapPin, Users, Plus, X, Play, CheckCircle } from 'lucide-react';
 import * as motion from 'motion/react-client';
+import { logToSheet } from '../utils/sheets';
 
 const validLocations = [
   "Shuttle Stand",
@@ -46,8 +47,8 @@ export default function DriverPortal({ user, rides, addRide, updateRideStatus }:
     e.preventDefault();
     const newRide: Ride = {
       id: Math.random().toString(36).substring(2, 9),
-      driverId: user.id,
-      driver: user.name,
+      driverId: user.id || '',
+      driver: user.name || '',
       type: getRideType(),
       from,
       to: 'Any Destination',
@@ -58,6 +59,20 @@ export default function DriverPortal({ user, rides, addRide, updateRideStatus }:
       passengers: [],
       status: 'scheduled'
     };
+    
+    // Log to Driver sheet
+    // Format: Full Name, Shuttle No, Email, Role, Seats, Location, Completed
+    logToSheet('Driver', [
+      user?.name || '',
+      user?.shuttleNo || '',
+      user?.email || '',
+      user?.driverType || 'driver',
+      seats,
+      from,
+      'No',
+      newRide.id
+    ], newRide.id);
+    
     addRide(newRide);
     setShowAddModal(false);
   };
@@ -174,7 +189,19 @@ export default function DriverPortal({ user, rides, addRide, updateRideStatus }:
                   )}
                   {ride.status === 'active' && (
                     <button 
-                      onClick={() => updateRideStatus(ride.id, 'completed')}
+                      onClick={() => {
+                        updateRideStatus(ride.id, 'completed');
+                        logToSheet('Driver', [
+                          user.name || '',
+                          user.shuttleNo || '',
+                          user.email || '',
+                          user.driverType || 'driver',
+                          ride.seats,
+                          ride.from,
+                          'Yes',
+                          ride.id
+                        ], ride.id);
+                      }}
                       className="mt-6 w-full flex items-center justify-center gap-2 bg-black hover:bg-gray-800 text-white font-bold py-3.5 text-xs uppercase tracking-widest transition-all rounded-xl shadow-md hover:shadow-xl"
                     >
                       <CheckCircle className="w-4 h-4" /> Mark Completed
