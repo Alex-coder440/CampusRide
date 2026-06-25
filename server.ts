@@ -285,11 +285,19 @@ async function startServer() {
       `, [MatricNumber, FirstName, LastName, Email]);
       
       // Upsert Account
-      await query(`
-        INSERT INTO Accounts (Name, Email) 
-        VALUES ($1, $2) 
-        ON CONFLICT (Email) DO NOTHING
-      `, [studentName, Email]);
+      try {
+        await query(`
+          INSERT INTO "Accounts" ("Name", "Email", "Verified") 
+          VALUES ($1, $2, $3) 
+          ON CONFLICT ("Email") DO NOTHING
+        `, [studentName, Email, false]);
+      } catch (err) {
+        await query(`
+          INSERT INTO accounts (name, email, verified) 
+          VALUES ($1, $2, $3) 
+          ON CONFLICT (email) DO NOTHING
+        `, [studentName, Email, false]);
+      }
       
       res.json({ success: true, message: "Student signed in successfully" });
     } catch (err: any) {
@@ -313,42 +321,72 @@ async function startServer() {
 
   app.post('/api/rides/post', async (req, res) => {
     try {
-      const { DriverID, DriverName, Seats, Location } = req.body;
-      const result = await query(`
-        INSERT INTO PostedRides (DriverID, DriverName, Seats, Location) 
-        VALUES ($1, $2, $3, $4) 
-        RETURNING *
-      `, [DriverID, DriverName, Seats, Location]);
-      res.json(result.rows[0]);
+      const { Seats, Location, Completed } = req.body;
+      try {
+        const result = await query(`
+          INSERT INTO "PostedRides" ("Seats", "Location", "Completed") 
+          VALUES ($1, $2, $3) 
+          RETURNING *
+        `, [Seats, Location, Completed || false]);
+        res.json(result.rows[0]);
+      } catch (err) {
+        const result = await query(`
+          INSERT INTO postedrides (seats, location, completed) 
+          VALUES ($1, $2, $3) 
+          RETURNING *
+        `, [Seats, Location, Completed || false]);
+        res.json(result.rows[0]);
+      }
     } catch (err: any) {
+      console.error(err);
       res.status(500).json({ error: err.message });
     }
   });
 
   app.post('/api/rides/book', async (req, res) => {
     try {
-      const { MatricNumber, DriverID, DriverName, Seats, Location, Destination, Amount, Time = new Date().toISOString() } = req.body;
-      const result = await query(`
-        INSERT INTO BookedRides (MatricNumber, DriverID, DriverName, Seats, Time, Location, Destination, Amount) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-        RETURNING *
-      `, [MatricNumber, DriverID, DriverName, Seats, Time, Location, Destination, Amount]);
-      res.json(result.rows[0]);
+      const { Driver, Seats, Location, Destination, Amount, Time = new Date().toISOString() } = req.body;
+      try {
+        const result = await query(`
+          INSERT INTO "BookedRides" ("Driver", "Seats", "Time", "Location", "Destination", "Amount") 
+          VALUES ($1, $2, $3, $4, $5, $6) 
+          RETURNING *
+        `, [Driver, Seats, Time, Location, Destination, Amount]);
+        res.json(result.rows[0]);
+      } catch (err) {
+        const result = await query(`
+          INSERT INTO bookedrides (driver, seats, time, location, destination, amount) 
+          VALUES ($1, $2, $3, $4, $5, $6) 
+          RETURNING *
+        `, [Driver, Seats, Time, Location, Destination, Amount]);
+        res.json(result.rows[0]);
+      }
     } catch (err: any) {
+      console.error(err);
       res.status(500).json({ error: err.message });
     }
   });
 
   app.post('/api/appeals', async (req, res) => {
     try {
-      const { Name, Type } = req.body;
-      const result = await query(`
-        INSERT INTO Appeals (Name, Type) 
-        VALUES ($1, $2) 
-        RETURNING *
-      `, [Name, Type]);
-      res.json(result.rows[0]);
+      const { Name, Type, Approved } = req.body;
+      try {
+        const result = await query(`
+          INSERT INTO "Appeals" ("Name", "Type", "Approved") 
+          VALUES ($1, $2, $3) 
+          RETURNING *
+        `, [Name, Type, Approved || false]);
+        res.json(result.rows[0]);
+      } catch (err) {
+        const result = await query(`
+          INSERT INTO appeals (name, type, approved) 
+          VALUES ($1, $2, $3) 
+          RETURNING *
+        `, [Name, Type, Approved || false]);
+        res.json(result.rows[0]);
+      }
     } catch (err: any) {
+      console.error(err);
       res.status(500).json({ error: err.message });
     }
   });

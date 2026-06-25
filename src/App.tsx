@@ -210,7 +210,6 @@ export default function App() {
     if (!user || user.role !== 'student') return;
     
     const ride = rides.find(r => r.id === rideId);
-    const driverId = ride ? parseInt(ride.driverId) || 1 : 1;
     const driverName = ride?.driver || 'Unknown Driver';
     const amount = ride ? ride.price * seats : 0;
 
@@ -219,14 +218,12 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          MatricNumber: user.matricNo || `M-${user.id}`,
-          DriverID: driverId,
-          DriverName: driverName,
+          Driver: driverName,
           Seats: seats,
+          Time: time || new Date().toLocaleString(),
           Location: pickup || ride?.from || 'Campus',
           Destination: destination || ride?.to || 'Off Campus',
-          Amount: amount,
-          Time: time || new Date().toISOString()
+          Amount: amount
         })
       });
     } catch (err) {
@@ -243,10 +240,9 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          DriverID: parseInt(ride.driverId) || 1,
-          DriverName: ride.driver,
           Seats: ride.seats,
-          Location: ride.from
+          Location: ride.from,
+          Completed: false
         })
       });
     } catch (err) {
@@ -269,7 +265,8 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           Name: `${firstName} ${lastName}`,
-          Type: 'Welfare'
+          Type: 'Welfare',
+          Approved: false
         })
       });
     } catch (err) {
@@ -298,7 +295,8 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           Name: `${firstName} ${lastName}`,
-          Type: 'Exeat'
+          Type: 'Exeat',
+          Approved: false
         })
       });
     } catch (err) {
